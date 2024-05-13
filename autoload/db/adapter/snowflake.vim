@@ -1,5 +1,5 @@
 function! db#adapter#snowflake#canonicalize(url) abort
-  let url = substitute(a:url, '^snowflake\d*:/\@!', 'snowflake:///', '')
+  let url = substitute(a:url, '^snowflake\d*:/\@!', 'mysql:///', '')
   " JDBC
   let url = substitute(url, '//address=(\(.*\))\(/[^#]*\)', '\="//".submatch(2)."&".substitute(submatch(1), ")(", "\\&", "g")', '')
   let url = substitute(url, '[&?]', '?', '')
@@ -13,7 +13,7 @@ endfunction
 
 function! s:command_for_url(url) abort
   let params = db#url#parse(a:url).params
-  let command = ['snowflake']
+  let command = ['mysql']
 
   for i in keys(params)
     let command += ['--'.i.'='.params[i]]
