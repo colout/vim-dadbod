@@ -3,6 +3,7 @@ function! db#adapter#snowflake#canonicalize(url) abort
   " JDBC
   let url = substitute(url, '//address=(\(.*\))\(/[^#]*\)', '\="//".submatch(2)."&".substitute(submatch(1), ")(", "\\&", "g")', '')
   let url = substitute(url, '[&?]', '?', '')
+  echomsg "HI"
   return db#url#absorb_params(url, {
         \ 'user': 'user',
         \ 'password': 'password',
