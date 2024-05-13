@@ -1,50 +1,50 @@
-function! s:command_for_url(params) abort
-  let cmd = 'snowsql'
-  for [k, v] in items(a:params)
-    let cmd .= ' --'.k.' '.v
-  endfor
-  return cmd
+function! db#adapter#snowflake#canonicalize(url) abort
+  let url = substitute(a:url, '^snowflake\d*:/\@!', 'snowflake:///', '')
+  " JDBC
+  let url = substitute(url, '//address=(\(.*\))\(/[^#]*\)', '\="//".submatch(2)."&".substitute(submatch(1), ")(", "\\&", "g")', '')
+  let url = substitute(url, '[&?]', '?', '')
+  return db#url#absorb_params(url, {
+        \ 'user': 'user',
+        \ 'password': 'password',
+        \ 'path': 'host',
+        \ 'host': 'host',
+        \ 'port': 'port'})
 endfunction
 
-function! s:params(url) abort
-  if stridx(a:url, 'connection') > 0
-    let conn_string = split(a:url, "=")[1]
-    let conn_params = {'connection': conn_string}
-    return conn_params
-  endif
-  let parsed_params = db#url#parse(a:url)
-  let conn_params = parsed_params.params
-  if has_key(parsed_params, 'host')
-    let accountname = split(parsed_params.host, '\.')[0]
-    let conn_params.accountname = accountname 
-  endif
-  return conn_params
+function! s:command_for_url(url) abort
+  let params = db#url#parse(a:url).params
+  let command = ['snowflake']
+
+  for i in keys(params)
+    let command += ['--'.i.'='.params[i]]
+  endfor
+
+  return command + db#url#as_argv(a:url, '-h ', '-P ', '-S ', '-u ', '-p', '')
 endfunction
 
 function! db#adapter#snowflake#interactive(url) abort
-  echomsg "starting snowsql. executing query"
-  return s:command_for_url(s:params(a:url))
+  return s:command_for_url(a:url)
 endfunction
 
-function! db#adapter#snowflake#input_flag() abort
-  return ' -f '
+function! db#adapter#snowflake#filter(url) abort
+  return s:command_for_url(a:url) + ['-t']
+endfunction
+
+function! db#adapter#snowflake#auth_pattern() abort
+  return '^ERROR 104[45] '
 endfunction
 
 function! db#adapter#snowflake#complete_opaque(url) abort
-  return db#adapter#snowflake#complete_database(url)
+  return db#adapter#snowflake#complete_database('snowflake:///')
 endfunction
 
 function! db#adapter#snowflake#complete_database(url) abort
-  let cmd = s:command_for_url(s:params(a:url))
-  let cmd .= ' --query "show databases"'
-  let out = system(cmd)
-  let dbs = []
-  for i in split(out, "\n")[6:-1]
-    let dbname = split(i, "|")
-    if len(dbname) > 2
-      call add(dbs, trim(dbname[1])) 
-    endif
-  endfor
-  return dbs 
+  let pre = matchstr(a:url, '[^:]\+://.\{-\}/')
+  let cmd = s:command_for_url(pre)
+  let out = db#systemlist(cmd + ['-e', 'show databases'])
+  return out[1:-1]
 endfunction
 
+function! db#adapter#snowflake#tables(url) abort
+  return db#systemlist(s:command_for_url(a:url) + ['-e', 'show tables'])[1:-1]
+endfunction
