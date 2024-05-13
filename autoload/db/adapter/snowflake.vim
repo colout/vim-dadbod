@@ -2,9 +2,7 @@ function! s:command(url, output) abort
   let url = db#url#parse(a:url)
   let endpoint_url = []
   if has_key(url, 'user')
-    let profile = url.user
-    let http_url = 'http://' .. url.host .. ':' .. url.port
-    let endpoint_url = ['--endpoint-url', http_url]
+    let connection = ['--endpoint-url', url.connection]
   else
     if has_key(url, 'host')
       let profile = url.host
@@ -12,7 +10,7 @@ function! s:command(url, output) abort
       let profile = 'default'
     endif
   endif
-  return ['aws', 'dynamodb', '--profile', profile, '--output', a:output] + endpoint_url
+  return ['snowsql']
 endfunction
 
 function! db#adapter#snowflake#input_extension() abort
