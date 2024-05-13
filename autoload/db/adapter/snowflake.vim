@@ -1,51 +1,43 @@
-function! db#adapter#snowflake#canonicalize(url) abort
-  let url = substitute(a:url, '^snowflake\d*:/\@!', 'mysql:///', '')
-  " JDBC
-  let url = substitute(url, '//address=(\(.*\))\(/[^#]*\)', '\="//".submatch(2)."&".substitute(submatch(1), ")(", "\\&", "g")', '')
-  let url = substitute(url, '[&?]', '?', '')
-  echomsg "HI"
-  return db#url#absorb_params(url, {
-        \ 'user': 'user',
-        \ 'password': 'password',
-        \ 'path': 'host',
-        \ 'host': 'host',
-        \ 'port': 'port'})
+function! s:command(url, output) abort
+  let url = db#url#parse(a:url)
+  let endpoint_url = []
+  if has_key(url, 'user')
+    let profile = url.user
+    let http_url = 'http://' .. url.host .. ':' .. url.port
+    let endpoint_url = ['--endpoint-url', http_url]
+  else
+    if has_key(url, 'host')
+      let profile = url.host
+    else
+      let profile = 'default'
+    endif
+  endif
+  return ['aws', 'dynamodb', '--profile', profile, '--output', a:output] + endpoint_url
 endfunction
 
-function! s:command_for_url(url) abort
-  let params = db#url#parse(a:url).params
-  let command = ['mysql']
-
-  for i in keys(params)
-    let command += ['--'.i.'='.params[i]]
-  endfor
-
-  return command + db#url#as_argv(a:url, '-h ', '-P ', '-S ', '-u ', '-p', '')
+function! db#adapter#snowflake#input_extension() abort
+  return 'js'
 endfunction
 
-function! db#adapter#snowflake#interactive(url) abort
-  return s:command_for_url(a:url)
+function! db#adapter#snowflake#output_extension() abort
+  return 'json'
 endfunction
 
-function! db#adapter#snowflake#filter(url) abort
-  return s:command_for_url(a:url) + ['-t']
+function! db#adapter#snowflake#input(url, in) abort
+  if filereadable(a:in)
+    let lines = readfile(a:in)
+    return s:command(a:url, 'json') + split(lines[0])
+  endif
+  return ['echo', 'no', 'command']
 endfunction
 
-function! db#adapter#snowflake#auth_pattern() abort
-  return '^ERROR 104[45] '
-endfunction
-
-function! db#adapter#snowflake#complete_opaque(url) abort
-  return db#adapter#snowflake#complete_database('snowflake:///')
-endfunction
-
-function! db#adapter#snowflake#complete_database(url) abort
-  let pre = matchstr(a:url, '[^:]\+://.\{-\}/')
-  let cmd = s:command_for_url(pre)
-  let out = db#systemlist(cmd + ['-e', 'show databases'])
-  return out[1:-1]
+function! db#adapter#snowflake#auth_input() abort
+  return v:false
 endfunction
 
 function! db#adapter#snowflake#tables(url) abort
-  return db#systemlist(s:command_for_url(a:url) + ['-e', 'show tables'])[1:-1]
+  let cmd = s:command(a:url, 'text') + ['list-tables']
+  let out = db#systemlist(cmd)
+  return map(out, 'matchstr(v:val, "\\w*$")')
 endfunction
+
