@@ -1,8 +1,3 @@
-if exists('g:autoloaded_db_snowflake')
-  finish
-endif
-let g:autoloaded_db_snowflake = 1
-
 function! s:command_for_url(params) abort
   let cmd = 'snowsql'
   for [k, v] in items(a:params)
@@ -36,7 +31,6 @@ function! db#adapter#snowflake#input_flag() abort
 endfunction
 
 function! db#adapter#snowflake#complete_opaque(url) abort
-  echomsg url
   return db#adapter#snowflake#complete_database(url)
 endfunction
 
