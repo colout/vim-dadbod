@@ -10,7 +10,7 @@ function! s:command(url, output) abort
       let profile = 'default'
     endif
   endif
-  return ['snowsql']
+  return ['/Applications/SnowSQL.app/Contents/MacOS/snowsql']
 endfunction
 
 function! db#adapter#snowflake#input_extension() abort
