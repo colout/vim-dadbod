@@ -36,6 +36,7 @@ function! db#adapter#snowflake#input_flag() abort
 endfunction
 
 function! db#adapter#snowflake#complete_opaque(url) abort
+  echomsg url
   return db#adapter#snowflake#complete_database(url)
 endfunction
 
